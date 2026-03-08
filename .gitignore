@@ -1,0 +1,14 @@
+# Données brutes (trop lourdes pour GitHub)
+data/raw/
+data/clean/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Python
+__pycache__/
+*.pyc
+.env
+
+# OS
+.DS_Store

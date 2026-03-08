@@ -38,5 +38,5 @@ jupyter notebook dashboard.ipynb
 ```
 
 ## 👤 Auteur
-**Tahar Guenfoud** — En reconversion Data Analyst  
+**Tahar Guenfoud**  
 [GitHub](https://github.com/Proftg)

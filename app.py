@@ -17,8 +17,13 @@ st.set_page_config(
 # ============================================================
 @st.cache_data  # mise en cache → l'app ne recharge pas à chaque interaction
 def load_data():
+    BASE = (
+        "https://opendata.infrabel.be/api/explore/v2.1/catalog/datasets"
+        "/{}/exports/csv?lang=fr&timezone=Europe%2FBrussels&use_labels=true&delimiter=%3B"
+    )
+
     # Ponctualité par gare
-    df_gare = pd.read_csv("data/raw/ponctualite_par_gare.csv", sep=";")
+    df_gare = pd.read_csv(BASE.format("maandelijkse-stiptheid-per-stopplaats"), sep=";")
     df_gare.columns = [
         "date", "nom_gare_fr", "nom_gare_nl", "nom_gare_de", "id_gare",
         "classification_fr", "classification_nl", "classification_de",
@@ -30,7 +35,7 @@ def load_data():
     df_gare["nb_trains_retard"] = df_gare["nb_trains"] - df_gare["nb_trains_ponctuels"]
 
     # Trains supprimés
-    df_suppression = pd.read_csv("data/raw/trains_supprimes.csv", sep=";")
+    df_suppression = pd.read_csv(BASE.format("afgeschafte-treinen-per-maand-vanaf-2020"), sep=";")
     df_suppression.columns = [
         "date", "nb_trains_supprimes_total", "nb_trains_supprimes_partiel",
         "nb_trains_supprimes_entier", "nb_trains", "pct_trains_supprimes", "annee"
@@ -39,7 +44,7 @@ def load_data():
     df_suppression = df_suppression.drop(columns=["annee"])
 
     # Causes des retards
-    df_causes = pd.read_csv("data/raw/causes_retards.csv", sep=";")
+    df_causes = pd.read_csv(BASE.format("oorzaken-vertraging-per-maand"), sep=";")
     df_causes.columns = [
         "annee", "date", "mois", "responsable_nl", "responsable", "responsable_en",
         "nb_trains_en_retard", "nb_trains_total", "perte_ponctualite", "proportion_pct",
@@ -49,7 +54,7 @@ def load_data():
     df_causes = df_causes.drop(columns=["annee", "mois", "responsable_nl", "responsable_en"])
 
     # Ponctualité par moment
-    df_moment = pd.read_csv("data/raw/ponctualite_par_moment.csv", sep=";")
+    df_moment = pd.read_csv(BASE.format("nationale-stiptheid-per-moment-en-per-maand"), sep=";")
     df_moment.columns = [
         "date", "periode_nl", "periode", "periode_en",
         "ponctualite_pct", "nb_trains", "nb_trains_ponctuels", "nb_minutes_retard", "annee"

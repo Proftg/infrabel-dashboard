@@ -4,6 +4,8 @@ data/clean/
 
 # Jupyter
 .ipynb_checkpoints/
+dashboard_executed.ipynb
+dashboard_reference.ipynb
 
 # Python
 __pycache__/

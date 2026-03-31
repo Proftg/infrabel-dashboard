@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard KPI Infrabel — Tahar Guenfoud</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --dark:    #1a2940;
+    --blue:    #1a5276;
+    --light:   #aed6f1;
+    --green:   #1e8449;
+    --red:     #c0392b;
+    --orange:  #d35400;
+    --bg:      #f0f4f8;
+    --card:    #ffffff;
+    --border:  #d5e8f3;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Segoe UI',Arial,sans-serif; background:var(--bg); color:#1a1a1a; font-size:14px; }
+
+  /* ── Header ── */
+  .header { background:var(--dark); color:#fff; padding:18px 28px; display:flex; align-items:center; justify-content:space-between; box-shadow:0 2px 8px rgba(0,0,0,0.3); }
+  .header .logo { display:flex; align-items:center; gap:14px; }
+  .header .logo-icon { font-size:28px; }
+  .header .title { font-size:18px; font-weight:700; letter-spacing:-0.3px; }
+  .header .subtitle { font-size:12px; color:var(--light); margin-top:2px; }
+  .header .meta { font-size:11px; color:var(--light); text-align:right; }
+
+  /* ── Toolbar ── */
+  .toolbar { background:#fff; padding:12px 28px; display:flex; align-items:center; gap:16px; border-bottom:2px solid var(--border); box-shadow:0 1px 4px rgba(0,0,0,0.06); }
+  .toolbar label { font-size:12px; font-weight:600; color:var(--dark); text-transform:uppercase; letter-spacing:0.5px; }
+  .toolbar select { border:2px solid var(--blue); border-radius:6px; padding:6px 12px; font-size:13px; color:var(--dark); font-weight:600; background:#f0f7ff; cursor:pointer; outline:none; }
+  .toolbar select:hover { background:var(--light); }
+  .toolbar .refresh { margin-left:auto; font-size:11px; color:#888; }
+
+  /* ── Layout ── */
+  .main { padding:20px 28px; max-width:1400px; margin:0 auto; }
+
+  /* ── KPI Cards ── */
+  .kpi-row { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:20px; }
+  .kpi-card { background:var(--card); border-radius:10px; padding:18px 20px; border-left:5px solid var(--blue); box-shadow:0 2px 8px rgba(0,0,0,0.07); position:relative; overflow:hidden; }
+  .kpi-card::after { content:''; position:absolute; right:-15px; top:-15px; width:70px; height:70px; border-radius:50%; background:rgba(26,82,118,0.06); }
+  .kpi-card.green { border-left-color:var(--green); }
+  .kpi-card.red   { border-left-color:var(--red); }
+  .kpi-card.orange{ border-left-color:var(--orange); }
+  .kpi-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.6px; color:#777; margin-bottom:8px; }
+  .kpi-value { font-size:32px; font-weight:800; color:var(--dark); line-height:1; }
+  .kpi-unit  { font-size:14px; font-weight:600; color:#555; margin-left:2px; }
+  .kpi-delta { font-size:11px; margin-top:6px; font-weight:600; }
+  .kpi-delta.pos { color:var(--green); }
+  .kpi-delta.neg { color:var(--red); }
+  .kpi-icon  { position:absolute; right:18px; top:50%; transform:translateY(-50%); font-size:36px; opacity:0.15; }
+
+  /* ── Chart Grid ── */
+  .chart-grid-2 { display:grid; grid-template-columns:2fr 1fr; gap:16px; margin-bottom:16px; }
+  .chart-grid-2b{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
+
+  .chart-card { background:var(--card); border-radius:10px; padding:18px 20px; box-shadow:0 2px 8px rgba(0,0,0,0.07); }
+  .chart-card .c-title { font-size:13px; font-weight:700; color:var(--dark); margin-bottom:4px; }
+  .chart-card .c-sub   { font-size:11px; color:#888; margin-bottom:14px; }
+  .chart-card canvas   { max-height:280px; }
+
+  /* ── Objectif line note ── */
+  .note { font-size:10px; color:#c0392b; font-weight:600; margin-top:6px; }
+
+  /* ── Footer ── */
+  .footer { text-align:center; padding:16px; font-size:11px; color:#888; margin-top:8px; }
+  .footer strong { color:var(--dark); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">
+    <div class="logo-icon">🚆</div>
+    <div>
+      <div class="title">Dashboard KPI — Qualite de Service Infrabel</div>
+      <div class="subtitle">Ponctualite brute · Reliability · Minutes perdues · Causes retards</div>
+    </div>
+  </div>
+  <div class="meta">
+    Source : Open Data Infrabel<br>
+    <strong>Tahar Guenfoud</strong> · 2026
+  </div>
+</div>
+
+<div class="toolbar">
+  <label>Annee :</label>
+  <select id="yearSel" onchange="update()">
+    <option value="2024" selected>2024</option>
+  </select>
+  <div class="refresh">Donnees : API Open Data Infrabel · Mise a jour automatique</div>
+</div>
+
+<div class="main">
+
+  <!-- KPI Cards -->
+  <div class="kpi-row">
+    <div class="kpi-card">
+      <div class="kpi-label">Ponctualite Brute</div>
+      <div><span class="kpi-value" id="kpi-ponct">--</span><span class="kpi-unit">%</span></div>
+      <div class="kpi-delta" id="kpi-ponct-delta"></div>
+      <div class="kpi-icon">⏱️</div>
+    </div>
+    <div class="kpi-card green">
+      <div class="kpi-label">Reliability (Fiabilite)</div>
+      <div><span class="kpi-value" id="kpi-rel">--</span><span class="kpi-unit">%</span></div>
+      <div class="kpi-delta" id="kpi-rel-delta"></div>
+      <div class="kpi-icon">✅</div>
+    </div>
+    <div class="kpi-card orange">
+      <div class="kpi-label">Minutes Perdues</div>
+      <div><span class="kpi-value" id="kpi-mins">--</span></div>
+      <div class="kpi-delta">Somme retards cumules</div>
+      <div class="kpi-icon">🕐</div>
+    </div>
+    <div class="kpi-card red">
+      <div class="kpi-label">Trains en Retard</div>
+      <div><span class="kpi-value" id="kpi-retard">--</span></div>
+      <div class="kpi-delta">Passages avec retard > 6 min</div>
+      <div class="kpi-icon">🚨</div>
+    </div>
+  </div>
+
+  <!-- Evolution + Causes -->
+  <div class="chart-grid-2">
+    <div class="chart-card">
+      <div class="c-title">Evolution de la Ponctualite</div>
+      <div class="c-sub">Ponctualite moyenne mensuelle | Ligne rouge = objectif 90% Contrat de Performance</div>
+      <canvas id="chartEvo"></canvas>
+      <div class="note">● Objectif officiel Contrat de Performance Infrabel : 90%</div>
+    </div>
+    <div class="chart-card">
+      <div class="c-title">Responsables des Retards</div>
+      <div class="c-sub">Repartition de la perte de ponctualite par acteur</div>
+      <canvas id="chartCauses"></canvas>
+    </div>
+  </div>
+
+  <!-- Top 10 + Moments -->
+  <div class="chart-grid-2b">
+    <div class="chart-card">
+      <div class="c-title">Top 10 Gares — Blackspots</div>
+      <div class="c-sub">Nombre de passages en retard cumules (minutes perdues par gare)</div>
+      <canvas id="chartTop10"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="c-title">Ponctualite par Moment</div>
+      <div class="c-sub">Pointe matin · Pointe soir · Heures creuses · Weekends</div>
+      <canvas id="chartMoments"></canvas>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  Dashboard KPI Qualite de Service Infrabel &nbsp;|&nbsp; <strong>Tahar Guenfoud</strong> &nbsp;|&nbsp;
+  Stack : Python · Pandas · Chart.js &nbsp;|&nbsp; Source : <strong>Open Data Infrabel API REST</strong> &nbsp;|&nbsp; 2026
+</div>
+
+<script>
+const ALL_DATA = {"2022": {"kpi": {"ponct": 90.79, "rel": 96.18, "mins": 2872939, "retard": 1152222}, "top10": {"labels": ["BRUXELLES-MIDI", "BRUXELLES-CENTRAL", "BRUXELLES-NORD", "ANTWERPEN-BERCHEM", "ANTWERPEN-CENTRAAL", "MECHELEN", "GENT-SINT-PIETERS", "LEUVEN", "LIEGE-GUILLEMINS", "BRUXELLES-LUXEMBOURG"], "values": [40468, 39169, 38463, 20679, 18224, 15726, 15474, 14490, 14335, 10508]}, "evo": {"labels": ["2022-01", "2022-02", "2022-03", "2022-04", "2022-05", "2022-06", "2022-07", "2022-08", "2022-09", "2022-10", "2022-11", "2022-12"], "values": [95.21, 93.01, 91.76, 92.47, 91.86, 90.8, 93.48, 93.48, 91.09, 87.7, 88.27, 88.05]}, "causes": {"labels": ["SNCB", "Tiers", "Robustesse systémique", "Infrabel", "Autres"], "values": [46.97, 29.12, 27.28, 21.47, 4.49]}, "moments": {"labels": ["Pointe du matin", "Pointe du soir", "Heures creuses", "Weekends"], "values": [89.59, 84.22, 88.81, 93.55]}}, "2023": {"kpi": {"ponct": 89.34, "rel": 95.97, "mins": 3139810, "retard": 1325738}, "top10": {"labels": ["BRUXELLES-MIDI", "BRUXELLES-CENTRAL", "BRUXELLES-NORD", "ANTWERPEN-BERCHEM", "ANTWERPEN-CENTRAAL", "GENT-SINT-PIETERS", "LEUVEN", "LIEGE-GUILLEMINS", "MECHELEN", "HALLE"], "values": [47976, 46770, 45830, 23817, 21500, 20487, 18649, 18229, 17528, 10985]}, "evo": {"labels": ["2023-01", "2023-02", "2023-03", "2023-04", "2023-05", "2023-06", "2023-07", "2023-08", "2023-09", "2023-10", "2023-11", "2023-12"], "values": [91.72, 89.57, 90.56, 91.15, 90.14, 89.51, 93.11, 93.41, 89.66, 88.97, 84.51, 89.79]}, "causes": {"labels": ["SNCB", "Robustesse systémique", "Tiers", "Infrabel", "Autres"], "values": [58.71, 33.21, 30.46, 22.14, 5.59]}, "moments": {"labels": ["Pointe du matin", "Pointe du soir", "Heures creuses", "Weekends"], "values": [88.24, 81.52, 86.75, 92.81]}}, "2024": {"kpi": {"ponct": 90.86, "rel": 96.14, "mins": 2777980, "retard": 1160959}, "top10": {"labels": ["BRUXELLES-MIDI", "BRUXELLES-CENTRAL", "BRUXELLES-NORD", "ANTWERPEN-BERCHEM", "ANTWERPEN-CENTRAAL", "LIEGE-GUILLEMINS", "LEUVEN", "MECHELEN", "GENT-SINT-PIETERS", "HASSELT"], "values": [42799, 41427, 40962, 20848, 19592, 17619, 16767, 15664, 14894, 10380]}, "evo": {"labels": ["2024-01", "2024-02", "2024-03", "2024-04", "2024-05", "2024-06", "2024-07", "2024-08", "2024-09", "2024-10", "2024-11", "2024-12"], "values": [89.11, 90.57, 91.62, 91.82, 91.23, 91.54, 93.08, 93.81, 90.74, 91.39, 89.83, 93.33]}, "causes": {"labels": ["SNCB", "Robustesse systémique", "Tiers", "Infrabel", "Autres"], "values": [45.3, 30.28, 26.95, 16.86, 3.9]}, "moments": {"labels": ["Pointe du matin", "Pointe du soir", "Heures creuses", "Weekends"], "values": [90.03, 85.23, 89.25, 93.85]}}, "2025": {"kpi": {"ponct": 92.73, "rel": 96.22, "mins": 2275717, "retard": 891535}, "top10": {"labels": ["BRUXELLES-MIDI", "BRUXELLES-NORD", "BRUXELLES-CENTRAL", "ANTWERPEN-BERCHEM", "ANTWERPEN-CENTRAAL", "LEUVEN", "LIEGE-GUILLEMINS", "GENT-SINT-PIETERS", "MECHELEN", "HASSELT"], "values": [36404, 32699, 32313, 16243, 15302, 13898, 12541, 12509, 10363, 7155]}, "evo": {"labels": ["2025-01", "2025-02", "2025-03", "2025-04", "2025-05", "2025-06", "2025-07", "2025-08", "2025-09", "2025-10", "2025-11", "2025-12"], "values": [93.19, 91.94, 93.1, 93.16, 93.24, 92.53, 94.58, 95.12, 93.82, 91.91, 93.39, 94.61]}, "causes": {"labels": ["SNCB", "Tiers", "Robustesse systémique", "Infrabel", "Autres"], "values": [39.24, 21.81, 20.67, 14.34, 3.28]}, "moments": {"labels": ["Pointe du matin", "Pointe du soir", "Heures creuses", "Weekends"], "values": [92.12, 88.49, 91.48, 94.24]}}, "2026": {"kpi": {"ponct": 93.72, "rel": 96.32, "mins": 340540, "retard": 131616}, "top10": {"labels": ["BRUXELLES-MIDI", "BRUXELLES-NORD", "BRUXELLES-CENTRAL", "ANTWERPEN-BERCHEM", "ANTWERPEN-CENTRAAL", "LIEGE-GUILLEMINS", "LEUVEN", "GENT-SINT-PIETERS", "MECHELEN", "HALLE"], "values": [5292, 4717, 4509, 2370, 2297, 2099, 2053, 1662, 1653, 1142]}, "evo": {"labels": ["2026-01", "2026-02"], "values": [94.01, 94.7]}, "causes": {"labels": ["SNCB", "Tiers", "Robustesse systémique", "Infrabel", "Autres"], "values": [6.14, 3.11, 2.57, 1.95, 0.58]}, "moments": {"labels": ["Pointe du matin", "Pointe du soir", "Heures creuses", "Weekends"], "values": [92.57, 90.62, 92.52, 95.01]}}};
+const ANNEES   = [2022, 2023, 2024, 2025, 2026];
+
+// Populate year selector
+const sel = document.getElementById('yearSel');
+sel.innerHTML = '';
+ANNEES.forEach(y => {
+  const o = document.createElement('option');
+  o.value = y; o.text = y;
+  if (y === 2024) o.selected = true;
+  sel.appendChild(o);
+});
+
+let chartEvo, chartCauses, chartTop10, chartMoments;
+
+function fmt(n) {
+  return new Intl.NumberFormat('fr-BE').format(n);
+}
+
+function update() {
+  const yr = document.getElementById('yearSel').value;
+  const d  = ALL_DATA[yr];
+  if (!d) return;
+
+  // KPI Cards
+  document.getElementById('kpi-ponct').textContent = d.kpi.ponct.toFixed(2);
+  const dp = d.kpi.ponct - 90;
+  const ponctDelta = document.getElementById('kpi-ponct-delta');
+  ponctDelta.textContent = (dp >= 0 ? '+' : '') + dp.toFixed(2) + '% vs objectif 90%';
+  ponctDelta.className = 'kpi-delta ' + (dp >= 0 ? 'pos' : 'neg');
+
+  document.getElementById('kpi-rel').textContent = d.kpi.rel.toFixed(2);
+  const dr = d.kpi.rel - 99;
+  const relDelta = document.getElementById('kpi-rel-delta');
+  relDelta.textContent = (dr >= 0 ? '+' : '') + dr.toFixed(2) + '% vs objectif 99%';
+  relDelta.className = 'kpi-delta ' + (dr >= 0 ? 'pos' : 'neg');
+
+  document.getElementById('kpi-mins').textContent = fmt(d.kpi.mins);
+  document.getElementById('kpi-retard').textContent = fmt(d.kpi.retard);
+
+  // Colors
+  const COLORS = ['#1a5276','#c0392b','#e67e22','#27ae60','#8e44ad','#2980b9'];
+
+  // Chart 1 : Evolution
+  const evoData = {
+    labels: d.evo.labels,
+    datasets: [
+      {
+        label: 'Ponctualite brute (%)',
+        data: d.evo.values,
+        borderColor: '#1a5276',
+        backgroundColor: 'rgba(26,82,118,0.08)',
+        borderWidth: 2.5,
+        pointRadius: 3,
+        fill: true,
+        tension: 0.3
+      },
+      {
+        label: 'Objectif 90%',
+        data: d.evo.labels.map(() => 90),
+        borderColor: '#c0392b',
+        borderWidth: 1.5,
+        borderDash: [6,4],
+        pointRadius: 0,
+        fill: false
+      }
+    ]
+  };
+  if (chartEvo) chartEvo.destroy();
+  chartEvo = new Chart(document.getElementById('chartEvo'), {
+    type: 'line',
+    data: evoData,
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      plugins: { legend: { position:'bottom', labels:{ font:{ size:11 } } } },
+      scales: {
+        y: { min:75, max:100, ticks:{ callback: v => v+'%', font:{ size:10 } }, grid:{ color:'#eee' } },
+        x: { ticks:{ maxRotation:45, font:{ size:9 } }, grid:{ display:false } }
+      }
+    }
+  });
+
+  // Chart 2 : Causes (donut)
+  const causeColors = ['#1a5276','#c0392b','#e67e22','#27ae60','#8e44ad'];
+  if (chartCauses) chartCauses.destroy();
+  chartCauses = new Chart(document.getElementById('chartCauses'), {
+    type: 'doughnut',
+    data: {
+      labels: d.causes.labels,
+      datasets: [{ data: d.causes.values, backgroundColor: causeColors.slice(0, d.causes.labels.length), borderWidth: 2, borderColor:'#fff' }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true, cutout:'55%',
+      plugins: {
+        legend: { position:'bottom', labels:{ font:{ size:10 }, padding:10 } },
+        tooltip: { callbacks: { label: ctx => ' ' + ctx.label + ': ' + ctx.parsed.toFixed(1) } }
+      }
+    }
+  });
+
+  // Chart 3 : Top 10 gares (horizontal bar)
+  const top10Colors = d.top10.values.map((v,i) => i === 0 ? '#c0392b' : i < 3 ? '#e67e22' : '#1a5276');
+  if (chartTop10) chartTop10.destroy();
+  chartTop10 = new Chart(document.getElementById('chartTop10'), {
+    type: 'bar',
+    data: {
+      labels: d.top10.labels,
+      datasets: [{ label: 'Trains en retard', data: d.top10.values, backgroundColor: top10Colors, borderRadius: 4 }]
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: true,
+      plugins: { legend:{ display:false }, tooltip:{ callbacks:{ label: ctx => ' ' + fmt(ctx.parsed.x) + ' trains' } } },
+      scales: {
+        x: { ticks:{ font:{ size:9 }, callback: v => fmt(v) }, grid:{ color:'#eee' } },
+        y: { ticks:{ font:{ size:9 } }, grid:{ display:false } }
+      }
+    }
+  });
+
+  // Chart 4 : Moments (bar)
+  const momColors = d.moments.labels.map(l => {
+    if (l === 'Pointe du soir') return '#c0392b';
+    if (l === 'Pointe du matin') return '#e67e22';
+    if (l === 'Heures creuses') return '#1a5276';
+    return '#27ae60';
+  });
+  if (chartMoments) chartMoments.destroy();
+  chartMoments = new Chart(document.getElementById('chartMoments'), {
+    type: 'bar',
+    data: {
+      labels: d.moments.labels,
+      datasets: [{
+        label: 'Ponctualite (%)',
+        data: d.moments.values,
+        backgroundColor: momColors,
+        borderRadius: 6
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      plugins: {
+        legend:{ display:false },
+        tooltip:{ callbacks:{ label: ctx => ' ' + ctx.parsed.y.toFixed(2) + '%' } }
+      },
+      scales: {
+        y: { min:80, max:100, ticks:{ callback: v => v+'%', font:{ size:10 } }, grid:{ color:'#eee' } },
+        x: { ticks:{ font:{ size:10 } }, grid:{ display:false } }
+      }
+    }
+  });
+}
+
+update();
+</script>
+</body>
+</html>

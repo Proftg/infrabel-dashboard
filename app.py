@@ -3,9 +3,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-# ============================================================
 # Configuration de la page
-# ============================================================
 st.set_page_config(
     page_title="Dashboard Infrabel",
     page_icon="🚆",
@@ -16,9 +14,7 @@ st.set_page_config(
 FONT = dict(color="#1e293b", family="Arial, sans-serif")
 BG   = "#ffffff"
 
-# ============================================================
 # Chargement des données
-# ============================================================
 RAW_DIR = os.path.join(os.path.dirname(__file__), "data", "raw")
 
 BASE_API = (
@@ -54,14 +50,13 @@ def load_data():
     df_gare["nb_trains_retard"] = df_gare["nb_trains"] - df_gare["nb_trains_ponctuels"]
     df_gare = df_gare.drop(columns=["geo_shape"])
 
-    # Trains supprimés (7 colonnes)
+    # Trains supprimés (6 colonnes)
     df_suppression = load_csv("trains_supprimes.csv", DATASETS["trains_supprimes.csv"])
     df_suppression.columns = [
         "date", "nb_trains_supprimes_total", "nb_trains_supprimes_partiel",
-        "nb_trains_supprimes_entier", "nb_trains", "pct_trains_supprimes", "annee"
+        "nb_trains_supprimes_entier", "nb_trains", "pct_trains_supprimes"
     ]
     df_suppression["date"] = pd.to_datetime(df_suppression["date"], format="%Y-%m")
-    df_suppression = df_suppression.drop(columns=["annee"])
 
     # Causes des retards (12 colonnes)
     df_causes = load_csv("causes_retards.csv", DATASETS["causes_retards.csv"])
@@ -73,30 +68,27 @@ def load_data():
     df_causes["date"] = pd.to_datetime(df_causes["date"], format="%Y-%m")
     df_causes = df_causes.drop(columns=["annee", "mois"])
 
-    # Ponctualité par moment (7 colonnes)
+    # Ponctualité par moment (6 colonnes)
     df_moment = load_csv("ponctualite_moment.csv", DATASETS["ponctualite_moment.csv"])
     df_moment.columns = [
         "date", "periode", "ponctualite_pct",
-        "nb_trains", "nb_trains_ponctuels", "nb_minutes_retard", "annee"
+        "nb_trains", "nb_trains_ponctuels", "nb_minutes_retard"
     ]
     df_moment["date"] = pd.to_datetime(df_moment["date"], format="%Y-%m")
-    df_moment = df_moment.drop(columns=["annee"])
 
     return df_gare, df_suppression, df_causes, df_moment
 
 df_gare, df_suppression, df_causes, df_moment = load_data()
 
-# ============================================================
-# Sidebar — Filtres
-# ============================================================
-st.sidebar.title("🎛️ Filtres")
+# Sidebar: Filtres
+st.sidebar.title("Filtres")
 
 annees = sorted(df_gare["date"].dt.year.unique(), reverse=True)
-annee_selectionnee = st.sidebar.selectbox("📅 Année", annees)
+annee_selectionnee = st.sidebar.selectbox("Année", annees)
 
 toutes_les_gares = sorted(df_gare["nom_gare"].dropna().unique())
 gares_selectionnees = st.sidebar.multiselect(
-    "🚉 Gares (optionnel)",
+    "Gares (optionnel)",
     options=toutes_les_gares,
     placeholder="Toutes les gares..."
 )
@@ -105,44 +97,38 @@ df_annee = df_gare[df_gare["date"].dt.year == annee_selectionnee]
 if gares_selectionnees:
     df_annee = df_annee[df_annee["nom_gare"].isin(gares_selectionnees)]
 
-# ============================================================
 # Titre
-# ============================================================
-st.title("🚆 Dashboard Qualité de Service — Réseau Infrabel")
+st.title("Dashboard Qualité de Service, réseau Infrabel")
 st.caption(f"Année sélectionnée : **{annee_selectionnee}** | Source : Open Data Infrabel")
 st.divider()
 
-# ============================================================
 # KPI Cards
-# ============================================================
 kpi_ponctualite   = df_annee["ponctualite_pct"].mean().round(2)
 kpi_fiabilite     = (100 - df_suppression["pct_trains_supprimes"].mean()).round(2)
 kpi_trains_retard = int(df_annee["nb_trains_retard"].sum())
 
 col1, col2, col3 = st.columns(3)
-col1.metric("⏱️ Ponctualité",      f"{kpi_ponctualite}%",
+col1.metric("Ponctualité",      f"{kpi_ponctualite}%",
             delta=f"{round(kpi_ponctualite - 90, 2)}% vs objectif 90%")
-col2.metric("✅ Fiabilité",        f"{kpi_fiabilite}%",
+col2.metric("Fiabilité",        f"{kpi_fiabilite}%",
             delta=f"{round(kpi_fiabilite - 99, 2)}% vs objectif 99%")
-col3.metric("🚆 Trains en retard", f"{kpi_trains_retard:,}")
+col3.metric("Trains en retard", f"{kpi_trains_retard:,}")
 
 st.divider()
 
-# ============================================================
 # Téléchargement des données filtrées
-# ============================================================
-with st.expander("📥 Télécharger les données filtrées"):
+with st.expander("Télécharger les données filtrées"):
     col_dl1, col_dl2 = st.columns(2)
     with col_dl1:
         st.download_button(
-            "⬇️ Ponctualité par gare (.csv)",
+            "Ponctualité par gare (.csv)",
             data=df_annee.to_csv(index=False).encode("utf-8"),
             file_name=f"ponctualite_gares_{annee_selectionnee}.csv",
             mime="text/csv"
         )
     with col_dl2:
         st.download_button(
-            "⬇️ Causes des retards (.csv)",
+            "Causes des retards (.csv)",
             data=df_causes.to_csv(index=False).encode("utf-8"),
             file_name=f"causes_retards_{annee_selectionnee}.csv",
             mime="text/csv"
@@ -150,10 +136,8 @@ with st.expander("📥 Télécharger les données filtrées"):
 
 st.divider()
 
-# ============================================================
-# Line Chart — Évolution historique complète (2016–2026)
-# ============================================================
-st.subheader("📈 Évolution de la Ponctualité")
+# Line Chart: Évolution historique complète
+st.subheader("Évolution de la ponctualité")
 
 df_tendance = df_gare.groupby("date")["ponctualite_pct"].mean().round(2).reset_index()
 df_tendance["tendance_3m"] = df_tendance["ponctualite_pct"].rolling(3, center=True).mean().round(2)
@@ -173,17 +157,15 @@ fig_line.update_layout(
     hovermode="x unified",
     legend=dict(orientation="h", y=-0.2)
 )
-st.plotly_chart(fig_line, use_container_width=True)
+st.plotly_chart(fig_line, width="stretch")
 
 st.divider()
 
-# ============================================================
 # Bar Chart + Donut (côte à côte)
-# ============================================================
 col_bar, col_donut = st.columns(2)
 
 with col_bar:
-    st.subheader("🚉 Top 5 Gares — Trains en Retard")
+    st.subheader("Top 5 des gares par trains en retard")
     top5 = (
         df_annee.groupby("nom_gare")["nb_trains_retard"]
         .sum().sort_values(ascending=False).head(5).reset_index()
@@ -204,10 +186,10 @@ with col_bar:
         margin=dict(r=80, l=20, t=20, b=40),
         height=350
     )
-    st.plotly_chart(fig_bar, use_container_width=True)
+    st.plotly_chart(fig_bar, width="stretch")
 
 with col_donut:
-    st.subheader("🔍 Responsables des Retards")
+    st.subheader("Responsables des retards")
     df_pie = df_causes.groupby("responsable")["perte_ponctualite"].sum().reset_index()
     fig_pie = px.pie(
         df_pie, values="perte_ponctualite", names="responsable",
@@ -227,14 +209,12 @@ with col_donut:
         margin=dict(l=20, r=120, t=20, b=20),
         height=350
     )
-    st.plotly_chart(fig_pie, use_container_width=True)
+    st.plotly_chart(fig_pie, width="stretch")
 
 st.divider()
 
-# ============================================================
-# Heatmap — Ponctualité par Période & Mois (tri chronologique)
-# ============================================================
-st.subheader("🌡️ Ponctualité par Période & Mois")
+# Heatmap: Ponctualité par période et par mois
+st.subheader("Ponctualité par période et par mois")
 
 df_pivot = df_moment.pivot_table(
     index="periode", columns="date",
@@ -259,4 +239,4 @@ fig_heat.update_layout(
         tickfont=dict(color="#1e293b")
     )
 )
-st.plotly_chart(fig_heat, use_container_width=True)
+st.plotly_chart(fig_heat, width="stretch")
